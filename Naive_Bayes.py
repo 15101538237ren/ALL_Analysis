@@ -7,6 +7,7 @@ import os
 import itertools
 import datetime
 class_hash={}
+gene_names=[]
 def loadCsv(filename,header=None,col_First=None):
     lines = csv.reader(open(filename, "rb"))
     dataset = list(lines)
@@ -29,7 +30,7 @@ def loadCsv(filename,header=None,col_First=None):
             dataset[i][index]=float(val)
         if col_First:
             del dataset[i][0]
-    return dataset,gene_names
+    return dataset
 def splitDataset(dataset, splitRatio):
     trainSize = int(len(dataset) * splitRatio)
     trainSet = []
@@ -136,8 +137,7 @@ if __name__=='__main__':
     splitRatio = 1.0-1.0/n_fold
     input_dir="data"+os.sep+"methylation_data"
     filename="methy_gene_list_ALL_and_Normal.csv"
-    out_gene_target_list_file=open("out_gene_target_list_file.csv",'w')
-    dataset ,gene_names= loadCsv(os.path.join(input_dir,filename),True,True)
+    dataset = loadCsv(os.path.join(input_dir,filename),True,True)
     pridict_wanted_rate=0.9
     good_feature_list=[]
     for iter_no in range(2,len(list1)+1):
@@ -165,15 +165,7 @@ if __name__=='__main__':
                 evaluate_pridiction=evaluate_pridiction+(1.0/n_fold)*(accuracy/100.0)
             if evaluate_pridiction>=1.0:
                 good_feature_list.append(combination)
-                gene_str=gene_str2=str(evaluate_pridiction)
-                for item in combination:
-                    gene_str=gene_str+","+gene_names[item]
-                    gene_str2=gene_str2+","+str(item)
-                gene_str=gene_str+"\n"
-                gene_str2=gene_str2+"\n"
-                print gene_str2
-                out_gene_target_list_file.write(gene_str)
+                print str(combination)+"\t"+"rate:"+str(evaluate_pridiction)+"\n"
     print str(len(good_feature_list))
     endtime = datetime.datetime.now()
-    out_gene_target_list_file.close()
     print "running in "+str((endtime - starttime).seconds)+" seconds\n"
