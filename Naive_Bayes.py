@@ -4,16 +4,20 @@ import csv
 import random
 import math
 import os
+import itertools
+import datetime
 class_hash={}
 def loadCsv(filename,header=None,col_First=None):
     lines = csv.reader(open(filename, "rb"))
     dataset = list(lines)
     if header:
+        gene_names=dataset[0][1:len(dataset[0])-1]
         del dataset[0]
     class_count=0
     for i in range(len(dataset)):
         for index,val in enumerate(dataset[i]):
             if col_First and index==0:
+
                 continue
             #最后一列的话,将class_name转换为hash_value
 
@@ -25,7 +29,7 @@ def loadCsv(filename,header=None,col_First=None):
             dataset[i][index]=float(val)
         if col_First:
             del dataset[i][0]
-    return dataset
+    return dataset,gene_names
 def splitDataset(dataset, splitRatio):
     trainSize = int(len(dataset) * splitRatio)
     trainSet = []
@@ -116,12 +120,60 @@ def main():
             i=1
             while i<=n_fold:
                 trainingSet, testSet = splitDataset(dataset, splitRatio)
-                print('Split {0} rows into train={1} and test={2} rows').format(len(dataset), len(trainingSet), len(testSet))
+                #print('Split {0} rows into train={1} and test={2} rows').format(len(dataset), len(trainingSet), len(testSet))
                 # prepare model
                 summaries = summarizeByClass(trainingSet)
                 # test model
                 predictions = getPredictions(summaries, testSet)
                 accuracy = getAccuracy(testSet, predictions)
-                print('{0}:Accuracy for {1}-th run is {2}%').format(filename,i,accuracy)
+                #print('{0}:Accuracy for {1}-th run is {2}%').format(filename,i,accuracy)
                 i=i+1
-main()
+#main()
+if __name__=='__main__':
+    starttime = datetime.datetime.now()
+    list1=range(0,14)
+    n_fold=4
+    splitRatio = 1.0-1.0/n_fold
+    input_dir="data"+os.sep+"methylation_data"
+    filename="methy_gene_list_ALL_and_Normal.csv"
+    out_gene_target_list_file=open("out_gene_target_list_file.csv",'w')
+    dataset ,gene_names= loadCsv(os.path.join(input_dir,filename),True,True)
+    pridict_wanted_rate=0.9
+    good_feature_list=[]
+    for iter_no in range(2,len(list1)+1):
+        iter = list(itertools.combinations(list1,iter_no))
+        for combination in iter:
+            i=1
+            dataset_with_combination=[]
+            for j in range(0,len(dataset)):
+                dataset_with_combination.append([])
+                for k in range(0,len(dataset[0])):
+                    if k in combination:
+                        dataset_with_combination[j].append(dataset[j][k])
+                dataset_with_combination[j].append(dataset[j][len(dataset[0])-1])
+            evaluate_pridiction=0.0
+            while i<=n_fold:
+                trainingSet, testSet = splitDataset(dataset_with_combination, splitRatio)
+                #print('Split {0} rows into train={1} and test={2} rows').format(len(dataset), len(trainingSet), len(testSet))
+                # prepare model
+                summaries = summarizeByClass(trainingSet)
+                # test model
+                predictions = getPredictions(summaries, testSet)
+                accuracy = getAccuracy(testSet, predictions)
+                #print('{0}:Accuracy for {1}-th run is {2}%').format(filename,i,accuracy)
+                i=i+1
+                evaluate_pridiction=evaluate_pridiction+(1.0/n_fold)*(accuracy/100.0)
+            if evaluate_pridiction>=1.0:
+                good_feature_list.append(combination)
+                gene_str=gene_str2=str(evaluate_pridiction)
+                for item in combination:
+                    gene_str=gene_str+","+gene_names[item]
+                    gene_str2=gene_str2+","+str(item)
+                gene_str=gene_str+"\n"
+                gene_str2=gene_str2+"\n"
+                print gene_str2
+                out_gene_target_list_file.write(gene_str)
+    print str(len(good_feature_list))
+    endtime = datetime.datetime.now()
+    out_gene_target_list_file.close()
+    print "running in "+str((endtime - starttime).seconds)+" seconds\n"
