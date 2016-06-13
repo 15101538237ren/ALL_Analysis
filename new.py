@@ -1,4 +1,6 @@
-import csv
+# -*- coding:utf-8 -*-
+#  Example of Naive Bayes implemented from Scratch in Python
+import csv,os
 from numpy import *
 IPBP=["B0303C","B1494C","B1919C","R2326C","R2236C","R2692C","R2812C","R2791C"]
 IPBM=["B0585C","B0588C","B1589C","R1767C","R2533C","R2811C"]
@@ -97,3 +99,63 @@ def process_methylation_file(file_path,out_file_path,out_2):
     f.close()
     out_file.close()
     out_2_file.close()
+#将ALL和正常组甲基化的样本按照类别将样本进行划分,并将其输出到out_dir_类别.csv中
+def all_vs_normal_split_by_type(input_file_path,out_dir):
+    input_file=open(input_file_path, "r")
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    ipbp_out_file=open(out_dir+os.sep+"i+b+_VS_normal.csv","w")
+    ipbm_out_file=open(out_dir+os.sep+"i+b-_VS_normal.csv","w")
+    imbp_out_file=open(out_dir+os.sep+"i-b+_VS_normal.csv","w")
+    imbm_out_file=open(out_dir+os.sep+"i-b-_VS_normal.csv","w")
+    list_file=[ipbp_out_file,ipbm_out_file,imbp_out_file,imbm_out_file]
+    list_type=[IPBP,IPBM,IMBP,IMBM]
+    line=input_file.readline()
+    if line:
+        for file in list_file:
+            file.write(line)
+    line=input_file.readline()
+    while line:
+        contents=line.split(",")
+        type_name=contents[0].strip('\"').strip('\'')
+        for index,typelist in enumerate(list_type):
+            if type_name in typelist:
+                list_file[index].write(line)
+        if type_name in NORMAL:
+            for file in list_file:
+                file.write(line)
+        line=input_file.readline()
+
+    input_file.close()
+
+    for file in list_file:
+        file.close()
+def reorder_samples_by_all_types(input_file_path,out_put_file_path):
+
+    output_file=open(out_put_file_path,'w')
+
+    list_type=[IPBP,IPBM,IMBP,IMBM,NORMAL]
+    list_type_name=["IPBP","IPBM","IMBP","IMBM","NORMAL"]
+    header=True
+    for index,type in enumerate(list_type):
+        input_file=open(input_file_path, "r")
+        line=input_file.readline()
+        if header:
+            output_file.write(line)
+            header=False
+        line=input_file.readline()
+        while line:
+            contents=line.split(",")
+            type_name=contents[0].strip('\"').strip('\'')
+
+            if type_name in type:
+                contents[len(contents)-1]=list_type_name[index]
+                line_to_write=(",").join(contents)+"\n"
+                output_file.write(line_to_write)
+            line=input_file.readline()
+        input_file.close()
+if __name__ == '__main__':
+    input_file="data"+os.sep+"methylation_data"+os.sep+"methy_gene_list_ALL_and_Normal.csv"
+    out_dir="split_all_and_normal_by_type"
+    #all_vs_normal_split_by_type(input_file,out_dir)
+    reorder_samples_by_all_types(input_file,out_dir+os.sep+"reordered_all_and_normal.csv")

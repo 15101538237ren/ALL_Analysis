@@ -30,7 +30,7 @@ def loadCsv(filename,header=None,col_First=None):
             dataset[i][index]=float(val)
         if col_First:
             del dataset[i][0]
-    return dataset
+    return dataset,gene_names
 def splitDataset(dataset, splitRatio):
     trainSize = int(len(dataset) * splitRatio)
     trainSet = []
@@ -136,36 +136,55 @@ if __name__=='__main__':
     n_fold=4
     splitRatio = 1.0-1.0/n_fold
     input_dir="data"+os.sep+"methylation_data"
-    filename="methy_gene_list_ALL_and_Normal.csv"
-    dataset = loadCsv(os.path.join(input_dir,filename),True,True)
-    pridict_wanted_rate=0.9
-    good_feature_list=[]
-    for iter_no in range(2,len(list1)+1):
-        iter = list(itertools.combinations(list1,iter_no))
-        for combination in iter:
-            i=1
-            dataset_with_combination=[]
-            for j in range(0,len(dataset)):
-                dataset_with_combination.append([])
-                for k in range(0,len(dataset[0])):
-                    if k in combination:
-                        dataset_with_combination[j].append(dataset[j][k])
-                dataset_with_combination[j].append(dataset[j][len(dataset[0])-1])
-            evaluate_pridiction=0.0
-            while i<=n_fold:
-                trainingSet, testSet = splitDataset(dataset_with_combination, splitRatio)
-                #print('Split {0} rows into train={1} and test={2} rows').format(len(dataset), len(trainingSet), len(testSet))
-                # prepare model
-                summaries = summarizeByClass(trainingSet)
-                # test model
-                predictions = getPredictions(summaries, testSet)
-                accuracy = getAccuracy(testSet, predictions)
-                #print('{0}:Accuracy for {1}-th run is {2}%').format(filename,i,accuracy)
-                i=i+1
-                evaluate_pridiction=evaluate_pridiction+(1.0/n_fold)*(accuracy/100.0)
-            if evaluate_pridiction>=1.0:
-                good_feature_list.append(combination)
-                print str(combination)+"\t"+"rate:"+str(evaluate_pridiction)+"\n"
-    print str(len(good_feature_list))
+    out_target_dir="target_gene"
+    if not os.path.exists(out_target_dir):
+        os.makedirs(out_target_dir)
+    for filename in os.listdir(input_dir):
+        if filename=="methy_gene_list_ALL_and_Normal.csv":
+            continue
+        if os.path.isfile(os.path.join(input_dir,filename)):
+            out_gene_target_list_dir=out_target_dir+os.sep+filename[0:len(filename)-4]+"gene_target"
+            if not os.path.exists(out_gene_target_list_dir):
+                os.makedirs(out_gene_target_list_dir)
+                dataset,gene_names = loadCsv(os.path.join(input_dir,filename),True,True)
+                pridict_wanted_rate=0.9
+                good_feature_list=[]
+                for test_no in range(1,20):
+                    out_gene_target_list_file=open(out_gene_target_list_dir+os.sep+str(test_no)+".csv",'w')
+                    for iter_no in range(2,len(list1)+1):
+                        iter = list(itertools.combinations(list1,iter_no))
+                        for combination in iter:
+                            i=1
+                            dataset_with_combination=[]
+                            column_len=len(dataset[0])
+                            for j in range(0,len(dataset)):
+                                dataset_with_combination.append([])
+                                for k in range(0,column_len):
+                                    if k in combination:
+                                        dataset_with_combination[j].append(dataset[j][k])
+                                dataset_with_combination[j].append(dataset[j][len(dataset[0])-1])
+                            evaluate_pridiction=0.0
+                            while i<=n_fold:
+                                trainingSet, testSet = splitDataset(dataset_with_combination, splitRatio)
+                                #print('Split {0} rows into train={1} and test={2} rows').format(len(dataset), len(trainingSet), len(testSet))
+                                # prepare model
+                                summaries = summarizeByClass(trainingSet)
+                                # test model
+                                predictions = getPredictions(summaries, testSet)
+                                accuracy = getAccuracy(testSet, predictions)
+                                #print('{0}:Accuracy for {1}-th run is {2}%').format(filename,i,accuracy)
+                                i=i+1
+                                evaluate_pridiction=evaluate_pridiction+(1.0/n_fold)*(accuracy/100.0)
+                            if evaluate_pridiction>=1.0:
+                                good_feature_list.append(combination)
+                                gene_str=gene_str2=str(evaluate_pridiction)
+                                for item in combination:
+                                    gene_str=gene_str+","+gene_names[item]
+                                    gene_str2=gene_str2+","+str(item)
+                                gene_str=gene_str+"\n"
+                                gene_str2=gene_str2+"\n"
+                                print "test "+str(test_no)+":\t"+gene_str2
+                                out_gene_target_list_file.write(gene_str)
+                    print str(len(good_feature_list))
     endtime = datetime.datetime.now()
     print "running in "+str((endtime - starttime).seconds)+" seconds\n"
